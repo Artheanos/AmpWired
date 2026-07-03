@@ -1,0 +1,61 @@
+.wire {
+  fill: none;
+  stroke: #4fc3f7;
+  stroke-width: 2;
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke-width 0.15s;
+}
+
+.wire:hover,
+.wireSelected {
+  stroke-width: 4;
+}
+
+.wireActive {
+  stroke: #81d4fa;
+}
+
+.wireTemp {
+  fill: none;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.wireTempValid {
+  stroke: #66bb6a;
+  stroke-dasharray: 6 4;
+}
+
+.wireTempInvalid {
+  stroke: #ef5350;
+  stroke-dasharray: 6 4;
+}
+
+.wireTempNeutral {
+  stroke: #4fc3f7;
+  stroke-dasharray: 6 4;
+}
+
+.contextMenu {
+  position: fixed;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 150;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.contextMenuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+}
+
+.contextMenuItem:hover {
+  background: var(--grid-color);
+}

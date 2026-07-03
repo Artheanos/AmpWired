@@ -1,0 +1,45 @@
+.knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+  touch-action: none;
+}
+
+.dial {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--accent) calc(var(--value) * 270deg),
+    var(--grid-color) calc(var(--value) * 270deg)
+  );
+  border: 2px solid var(--node-border);
+  position: relative;
+  cursor: ns-resize;
+}
+
+.dial::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  background: var(--text);
+  transform: translateX(-50%) rotate(calc(var(--value) * 270deg - 135deg));
+  transform-origin: center 14px;
+}
+
+.label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.value {
+  font-size: 0.6rem;
+  color: var(--accent);
+}

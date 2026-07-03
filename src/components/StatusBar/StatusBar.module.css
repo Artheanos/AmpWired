@@ -1,0 +1,24 @@
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 4px 16px;
+  background: var(--status-bg);
+  border-top: 1px solid var(--grid-color);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.item {
+  display: flex;
+  gap: 6px;
+}
+
+.label {
+  color: var(--text-dim);
+}
+
+.value {
+  color: var(--text);
+}

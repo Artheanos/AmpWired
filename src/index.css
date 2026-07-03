@@ -1,0 +1,53 @@
+:root {
+  --bg-app: #0f0f1a;
+  --bg-canvas: #1a1a2e;
+  --grid-color: #2a2a3e;
+  --node-bg: #16213e;
+  --node-border: #2d3a5c;
+  --node-active: #4fc3f7;
+  --accent: #4fc3f7;
+  --accent-dim: #2979a8;
+  --text: #e8e8f0;
+  --text-dim: #8888a0;
+  --danger: #ef5350;
+  --toolbar-bg: #12121f;
+  --status-bg: #12121f;
+  --port-size: 12px;
+  --header-height: 32px;
+  --node-width: 180px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg-app);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+  color: inherit;
+}

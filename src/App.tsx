@@ -1,11 +1,11 @@
-import './App.css'
+import { PatchProvider } from './context/PatchProvider'
+import { AppLayout } from './components/AppLayout/AppLayout'
 
 function App() {
-
   return (
-    <div>
-      App
-    </div>
+    <PatchProvider>
+      <AppLayout />
+    </PatchProvider>
   )
 }
 
