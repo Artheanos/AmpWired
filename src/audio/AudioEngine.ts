@@ -16,6 +16,7 @@ export class AudioEngine {
   private sourceStreams = new Map<string, MediaStream>()
   private lastConnections: Connection[] = []
   private muted = false
+  private syncGeneration = 0
 
   get audioContext(): AudioContext | null {
     return this.context
@@ -25,8 +26,36 @@ export class AudioEngine {
     return this.muted
   }
 
+  private isSyncCurrent(generation: number): boolean {
+    return (
+      generation === this.syncGeneration &&
+      this.context !== null &&
+      this.context.state !== 'closed'
+    )
+  }
+
+  private isHandleValid(handle: NodeAudioHandle, ctx: AudioContext): boolean {
+    return handle.output.context === ctx && ctx.state !== 'closed'
+  }
+
+  private clearHandles(): void {
+    for (const stream of this.sourceStreams.values()) {
+      stream.getTracks().forEach((t) => t.stop())
+    }
+    this.sourceStreams.clear()
+    for (const handle of this.handles.values()) {
+      handle.dispose()
+    }
+    this.handles.clear()
+    this.wireConnections.clear()
+  }
+
   async ensureContext(): Promise<AudioContext> {
-    if (!this.context) {
+    if (!this.context || this.context.state === 'closed') {
+      if (this.context?.state === 'closed') {
+        this.syncGeneration++
+      }
+      this.clearHandles()
       this.context = new AudioContext()
     }
     if (this.context.state === 'suspended' && !this.muted) {
@@ -46,11 +75,14 @@ export class AudioEngine {
   }
 
   async syncGraph(nodes: Node[], connections: Connection[]): Promise<void> {
+    const generation = this.syncGeneration
     const ctx = await this.ensureContext()
+    if (!this.isSyncCurrent(generation)) return
+
     const nodeIds = new Set(nodes.map((n) => n.id))
 
     for (const [id, handle] of this.handles) {
-      if (!nodeIds.has(id)) {
+      if (!nodeIds.has(id) || !this.isHandleValid(handle, ctx)) {
         handle.dispose()
         this.handles.delete(id)
         const stream = this.sourceStreams.get(id)
@@ -62,8 +94,17 @@ export class AudioEngine {
     }
 
     for (const node of nodes) {
+      if (!this.isSyncCurrent(generation)) return
+
+      const existing = this.handles.get(node.id)
+      if (existing && !this.isHandleValid(existing, ctx)) {
+        existing.dispose()
+        this.handles.delete(node.id)
+      }
+
       if (!this.handles.has(node.id)) {
-        const handle = await this.createNodeHandle(ctx, node)
+        const handle = await this.createNodeHandle(ctx, node, generation)
+        if (!handle || !this.isSyncCurrent(generation)) return
         this.handles.set(node.id, handle)
       } else {
         const handle = this.handles.get(node.id)!
@@ -72,6 +113,8 @@ export class AudioEngine {
         }
       }
     }
+
+    if (!this.isSyncCurrent(generation)) return
 
     const validWireIds = new Set(connections.map((c) => c.id))
 
@@ -87,9 +130,17 @@ export class AudioEngine {
     }
 
     for (const conn of connections) {
+      if (!this.isSyncCurrent(generation)) return
+
       const sourceHandle = this.handles.get(conn.sourceNodeId)
       const targetHandle = this.handles.get(conn.targetNodeId)
       if (!sourceHandle || !targetHandle) continue
+      if (!this.isHandleValid(sourceHandle, ctx) || !this.isHandleValid(targetHandle, ctx)) {
+        continue
+      }
+      if (sourceHandle.output.context !== targetHandle.output.context) {
+        continue
+      }
 
       const existing = this.wireConnections.get(conn.id)
       if (
@@ -119,11 +170,15 @@ export class AudioEngine {
         }
       }
 
-      sourceHandle.output.connect(targetHandle.input)
-      this.wireConnections.set(conn.id, {
-        source: sourceHandle.output,
-        target: targetHandle.input,
-      })
+      try {
+        sourceHandle.output.connect(targetHandle.input)
+        this.wireConnections.set(conn.id, {
+          source: sourceHandle.output,
+          target: targetHandle.input,
+        })
+      } catch {
+        // stale context or already connected
+      }
     }
 
     this.lastConnections = connections
@@ -159,9 +214,9 @@ export class AudioEngine {
   }
 
   async setSourceDevice(nodeId: string, deviceId: string): Promise<void> {
+    const generation = this.syncGeneration
     const ctx = await this.ensureContext()
-    const node = this.handles.get(nodeId)
-    if (!node) return
+    if (!this.isSyncCurrent(generation)) return
 
     const oldStream = this.sourceStreams.get(nodeId)
     if (oldStream) {
@@ -172,18 +227,30 @@ export class AudioEngine {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: deviceId ? { deviceId: { exact: deviceId } } : true,
       })
+      if (!this.isSyncCurrent(generation)) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
       this.sourceStreams.set(nodeId, stream)
-      await this.recreateSource(nodeId, ctx, stream, false)
+      await this.recreateSource(nodeId, ctx, stream, false, generation)
     } catch {
-      await this.recreateSource(nodeId, ctx, null, true)
+      if (!this.isSyncCurrent(generation)) return
+      await this.recreateSource(nodeId, ctx, null, true, generation)
     }
-    this.reconnectNodeWires(nodeId)
+    if (this.isSyncCurrent(generation)) {
+      this.reconnectNodeWires(nodeId)
+    }
   }
 
-  private async createNodeHandle(ctx: AudioContext, node: Node): Promise<NodeAudioHandle> {
+  private async createNodeHandle(
+    ctx: AudioContext,
+    node: Node,
+    generation: number,
+  ): Promise<NodeAudioHandle | null> {
     if (node.type === 'source') {
-      return this.createSourceHandle(ctx, node)
+      return this.createSourceHandle(ctx, node, generation)
     }
+    if (!this.isSyncCurrent(generation)) return null
     if (node.type === 'destination') {
       return this.createDestinationHandle(ctx, node)
     }
@@ -206,14 +273,23 @@ export class AudioEngine {
     }
   }
 
-  private async createSourceHandle(ctx: AudioContext, node: Node): Promise<NodeAudioHandle> {
+  private async createSourceHandle(
+    ctx: AudioContext,
+    node: Node,
+    generation: number,
+  ): Promise<NodeAudioHandle | null> {
     let stream: MediaStream | null = null
     let usingOscillator = false
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!this.isSyncCurrent(generation)) {
+        stream.getTracks().forEach((t) => t.stop())
+        return null
+      }
       this.sourceStreams.set(node.id, stream)
     } catch {
+      if (!this.isSyncCurrent(generation)) return null
       usingOscillator = true
     }
 
@@ -272,7 +348,10 @@ export class AudioEngine {
     ctx: AudioContext,
     stream: MediaStream | null,
     usingOscillator: boolean,
+    generation: number,
   ): Promise<void> {
+    if (!this.isSyncCurrent(generation)) return
+
     const old = this.handles.get(nodeId)
     old?.dispose()
     const gain = ctx.createGain()
@@ -387,15 +466,8 @@ export class AudioEngine {
   }
 
   dispose(): void {
-    for (const stream of this.sourceStreams.values()) {
-      stream.getTracks().forEach((t) => t.stop())
-    }
-    this.sourceStreams.clear()
-    for (const handle of this.handles.values()) {
-      handle.dispose()
-    }
-    this.handles.clear()
-    this.wireConnections.clear()
+    this.syncGeneration++
+    this.clearHandles()
     void this.context?.close()
     this.context = null
   }

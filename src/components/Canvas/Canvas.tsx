@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { usePatch } from '../../context/PatchProvider'
 import { wouldCreateCycle } from '../../audio/graphUtils'
 import { NodeComponent } from '../Node/Node'
@@ -51,6 +51,11 @@ export function Canvas() {
     if (el) portRefs.current.set(key, el)
     else portRefs.current.delete(key)
   }, [])
+
+  // Port refs are set during child commit; re-measure wires before paint.
+  useLayoutEffect(() => {
+    forceUpdate((n) => n + 1)
+  }, [state.nodes, state.connections])
 
   useEffect(() => {
     const handleResize = () => forceUpdate((n) => n + 1)
