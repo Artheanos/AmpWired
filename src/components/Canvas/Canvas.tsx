@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { usePatch } from '../../context/PatchProvider'
 import { wouldCreateCycle } from '../../audio/graphUtils'
 import { NodeComponent } from '../Node/Node'
-import { WirePath, type Point } from '../Wire/Wire'
+import { WirePath, WireCable, WirePlugs, WireDefs, PlugDefs, type Point } from '../Wire/Wire'
 import wireStyles from '../Wire/Wire.module.css'
 import styles from './Canvas.module.css'
 
@@ -148,7 +148,8 @@ export function Canvas() {
 
   return (
     <div ref={canvasRef} className={styles.canvas} data-canvas>
-      <svg className={`${styles.svg} ${styles.svgInteractive}`}>
+      <svg className={`${styles.svg} ${styles.svgWires} ${styles.svgInteractive}`}>
+        <WireDefs />
         {state.connections.map((conn) => {
           const from = getPortCenter(conn.sourceNodeId, 'output')
           const to = getPortCenter(conn.targetNodeId, 'input')
@@ -172,7 +173,8 @@ export function Canvas() {
               className={className}
               onClick={(e) => {
                 e.stopPropagation()
-                selectWire(conn.id)
+                // selectWire(conn.id)
+                removeConnection(conn.id)
               }}
               onContextMenu={(e) => handleWireContextMenu(conn.id, e)}
             />
@@ -180,9 +182,10 @@ export function Canvas() {
         })}
 
         {wireDrag && tempWireFrom && (
-          <WirePath
+          <WireCable
             from={tempWireFrom}
             to={wireDrag.mouse}
+            endPlug="floating"
             className={
               hoveredInputId
                 ? wireDragValid
@@ -210,6 +213,18 @@ export function Canvas() {
           wireDragValid={wireDrag ? wireDragValid : null}
         />
       ))}
+
+      <svg className={`${styles.svg} ${styles.svgPlugs}`}>
+        <PlugDefs />
+        {wireDrag && tempWireFrom && (
+          <WirePlugs
+            from={tempWireFrom}
+            to={wireDrag.mouse}
+            endPlug="floating"
+            ends="both"
+          />
+        )}
+      </svg>
 
       {contextMenu && (
         <div

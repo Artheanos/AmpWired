@@ -1,7 +1,7 @@
 :root {
   --bg-app: #0f0f1a;
-  --bg-canvas: #1a1a2e;
-  --grid-color: #2a2a3e;
+  --bg-canvas: #1e1a16;
+  --grid-color: #2a2520;
   --node-bg: #16213e;
   --node-border: #2d3a5c;
   --node-active: #4fc3f7;
@@ -12,9 +12,33 @@
   --danger: #ef5350;
   --toolbar-bg: #12121f;
   --status-bg: #12121f;
-  --port-size: 12px;
+  --port-size: 20px;
+  --jack-width: 6px;
+  --jack-height: 24px;
+  --jack-depth: 14px;
+  --plug-barrel-length: 40px;
   --header-height: 32px;
-  --node-width: 180px;
+  --node-width: 200px;
+
+  /* Pedal enclosure defaults */
+  --pedal-base: #3a3a4a;
+  --pedal-highlight: #5a5a6a;
+  --pedal-shadow: #1a1a24;
+  --pedal-accent: #888;
+  --pedal-shadow-drop: 0 6px 16px rgba(0, 0, 0, 0.5);
+  --pedal-highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  /* Jack colors */
+  --jack-chrome: #c8c8d0;
+  --jack-nut: #909098;
+  --jack-hole: #0a0a0e;
+
+  /* Cable colors */
+  --cable-width: 7;
+  --cable-sheath: #1a1a1a;
+  --cable-highlight: #3a3a3a;
+  --cable-active: #2a2a2a;
+  --plug-size: 6;
 }
 
 *,

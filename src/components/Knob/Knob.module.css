@@ -8,38 +8,60 @@
 }
 
 .dial {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: conic-gradient(
-    from -90deg,
-    var(--accent) calc(var(--value) * 270deg),
-    var(--grid-color) calc(var(--value) * 270deg)
-  );
-  border: 2px solid var(--node-border);
+  background: radial-gradient(circle at 35% 30%, #444, #1a1a1a 70%);
+  border: none;
   position: relative;
   cursor: ns-resize;
+  box-shadow:
+    0 0 0 2px #666,
+    0 0 0 3px #333,
+    inset 0 1px 2px rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.dial::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    #333 0deg 8deg,
+    #555 8deg 10deg
+  );
+  opacity: 0.5;
 }
 
 .dial::after {
   content: '';
   position: absolute;
-  top: 4px;
+  top: 5px;
   left: 50%;
   width: 2px;
-  height: 10px;
-  background: var(--text);
+  height: 12px;
+  background: #eee;
+  border-radius: 1px;
   transform: translateX(-50%) rotate(calc(var(--value) * 270deg - 135deg));
-  transform-origin: center 14px;
+  transform-origin: center 15px;
+  z-index: 1;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
 }
 
 .label {
-  font-size: 0.65rem;
-  color: var(--text-dim);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
   text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .value {
-  font-size: 0.6rem;
-  color: var(--accent);
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
 }

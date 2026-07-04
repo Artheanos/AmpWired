@@ -47,6 +47,7 @@ export function NodeComponent({
 
   const paramDefs = getParamDefs(node.type, node.effectType)
   const icon = node.type === 'effect' && node.effectType ? ICONS[node.effectType] : ICONS[node.type]
+  const pedalType = node.type === 'effect' ? node.effectType : node.type
 
   useEffect(() => {
     if (node.type === 'source') {
@@ -107,12 +108,12 @@ export function NodeComponent({
   const hasInput = node.type === 'effect' || node.type === 'destination'
   const hasOutput = node.type === 'source' || node.type === 'effect'
 
-  const inputPortClass = [
-    styles.port,
-    styles.portInput,
-    hoveredInputId === node.id && wireDragValid === true ? styles.portValid : '',
-    hoveredInputId === node.id && wireDragValid === false ? styles.portInvalid : '',
-    hoveredInputId === node.id ? styles.portHover : '',
+  const inputJackClass = [
+    styles.jack,
+    styles.jackInput,
+    hoveredInputId === node.id && wireDragValid === true ? styles.jackValid : '',
+    hoveredInputId === node.id && wireDragValid === false ? styles.jackInvalid : '',
+    hoveredInputId === node.id ? styles.jackHover : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -123,15 +124,14 @@ export function NodeComponent({
         className={`${styles.node} ${isActive ? styles.nodeActive : ''}`}
         style={{ left: node.x, top: node.y }}
         data-node-id={node.id}
+        data-pedal-type={pedalType}
       >
-        <div className={styles.header}>
-          <span className={styles.icon}>{icon}</span>
-          <input
-            className={styles.label}
-            value={node.label}
-            onChange={(e) => updateLabel(node.id, e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-          />
+        <div className={styles.enclosure}>
+          <span className={`${styles.screw} ${styles.screwTopLeft}`} aria-hidden />
+          <span className={`${styles.screw} ${styles.screwTopRight}`} aria-hidden />
+          <span className={`${styles.screw} ${styles.screwBottomLeft}`} aria-hidden />
+          <span className={`${styles.screw} ${styles.screwBottomRight}`} aria-hidden />
+
           <button
             type="button"
             className={styles.close}
@@ -140,55 +140,73 @@ export function NodeComponent({
           >
             ×
           </button>
-        </div>
 
-        <div
-          className={styles.body}
-          onPointerDown={handleBodyPointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        >
-          {node.type === 'source' && (
-            <>
-              <button type="button" className={styles.deviceBtn} onClick={openDeviceModal}>
-                Select Input Device
-              </button>
-              {oscillatorWarning && (
-                <span className={styles.warning}>Mic unavailable — using test tone</span>
-              )}
-            </>
-          )}
-          {paramDefs.map((def) => (
-            <Knob
-              key={def.key}
-              def={def}
-              value={node.params[def.key] ?? def.default}
-              onChange={(v) => updateParam(node.id, def.key, v)}
+          <div className={styles.ledStrip}>
+            <span className={styles.led} aria-hidden />
+          </div>
+
+          <div className={styles.header}>
+            <span className={styles.icon}>{icon}</span>
+            <input
+              className={styles.label}
+              value={node.label}
+              onChange={(e) => updateLabel(node.id, e.target.value)}
+              onPointerDown={(e) => e.stopPropagation()}
             />
-          ))}
+          </div>
+
+          <div
+            className={styles.body}
+            onPointerDown={handleBodyPointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          >
+            {node.type === 'source' && (
+              <>
+                <button type="button" className={styles.deviceBtn} onClick={openDeviceModal}>
+                  Select Input Device
+                </button>
+                {oscillatorWarning && (
+                  <span className={styles.warning}>Mic unavailable — using test tone</span>
+                )}
+              </>
+            )}
+            {paramDefs.map((def) => (
+              <Knob
+                key={def.key}
+                def={def}
+                value={node.params[def.key] ?? def.default}
+                onChange={(v) => updateParam(node.id, def.key, v)}
+              />
+            ))}
+          </div>
         </div>
 
         {hasInput && (
           <div
             ref={(el) => onPortRef(node.id, 'input', el)}
-            className={inputPortClass}
+            className={inputJackClass}
             data-port="input"
             data-node-id={node.id}
             onPointerEnter={() => onInputDragOver(node.id)}
-          />
+          >
+            <div className={styles.jackNut}/>
+          </div>
         )}
 
         {hasOutput && (
           <div
             ref={(el) => onPortRef(node.id, 'output', el)}
-            className={`${styles.port} ${styles.portOutput}`}
+            className={`${styles.jack} ${styles.jackOutput}`}
             data-port="output"
             data-node-id={node.id}
             onPointerDown={(e) => {
               e.stopPropagation()
               onOutputDragStart(node.id, e)
             }}
-          />
+          >
+            <div className={styles.jackNut}/>
+          </div>
         )}
       </div>
 

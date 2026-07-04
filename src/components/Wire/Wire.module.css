@@ -1,40 +1,88 @@
 .wire {
+  /* group container for permanent wires */
+}
+
+.cableSheath {
   fill: none;
-  stroke: #4fc3f7;
-  stroke-width: 2;
+  stroke: url(#cableBraid);
+  stroke-width: 12;
+  stroke-linecap: butt;
   pointer-events: stroke;
   cursor: pointer;
   transition: stroke-width 0.15s;
 }
 
-.wire:hover,
-.wireSelected {
-  stroke-width: 4;
-}
-
-.wireActive {
-  stroke: #81d4fa;
-}
-
-.wireTemp {
-  fill: none;
-  stroke-width: 2;
+.plugLayer {
   pointer-events: none;
 }
 
-.wireTempValid {
-  stroke: #66bb6a;
-  stroke-dasharray: 6 4;
+.plugGroup {
+  pointer-events: none;
 }
 
-.wireTempInvalid {
-  stroke: #ef5350;
-  stroke-dasharray: 6 4;
+.plugTipMetal {
+  fill: url(#plugSleeveChrome);
+  stroke: #505058;
+  stroke-width: 0.3;
+  stroke-linejoin: round;
 }
 
-.wireTempNeutral {
-  stroke: #4fc3f7;
+.plugInsulator {
+  fill: #111;
+  stroke: none;
+}
+
+.plugSleeve {
+  fill: url(#plugSleeveChrome);
+  stroke: #484850;
+  stroke-width: 0.4;
+}
+
+.plugBarrel {
+  fill: url(#plugChrome);
+  stroke: #404048;
+  stroke-width: 0.5;
+}
+
+.plugKnurl {
+  fill: url(#plugKnurl);
+  opacity: 0.85;
+  stroke: none;
+}
+
+.plugHighlight {
+  fill: rgba(255, 255, 255, 0.18);
+  stroke: none;
+}
+
+.wire:hover .cableSheath,
+.wireSelected .cableSheath {
+  stroke-width: 9;
+}
+
+.wireActive .cableSheath {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.12));
+}
+
+.wireTempValid .cableSheath {
+  stroke: #2e5a2e;
+  stroke-width: 7;
   stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.wireTempInvalid .cableSheath {
+  stroke: #5a2020;
+  stroke-width: 7;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+.wireTempNeutral .cableSheath {
+  stroke: url(#cableBraid);
+  stroke-width: 7;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
 }
 
 .contextMenu {
