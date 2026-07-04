@@ -43,6 +43,7 @@ export const EFFECT_PARAM_DEFS: Record<EffectType, ParamDef[]> = {
 
 export const SOURCE_PARAMS: ParamDef[] = [
   { key: 'gain', label: 'Gain', min: 0, max: 1, default: 0.8 },
+  { key: 'gate', label: 'Gate', min: 0, max: 1, default: 0 },
 ]
 
 export const DESTINATION_PARAMS: ParamDef[] = [
@@ -67,6 +68,7 @@ export function getParamDefs(
 
 export function formatParamValue(def: ParamDef, value: number): string {
   if (def.key === 'mono') return value >= 0.5 ? 'Mono' : 'Stereo'
+  if (def.key === 'gate' && value <= 0) return 'Off'
   if (def.min === 0 && def.max === 1) return `${Math.round(value * 100)}%`
   return value.toFixed(2)
 }

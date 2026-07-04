@@ -348,9 +348,10 @@ export function PatchProvider({ children }: { children: ReactNode }) {
 
   const setSourceDevice = useCallback(
     async (nodeId: string, deviceId: string) => {
-      await audioEngine.setSourceDevice(nodeId, deviceId)
+      const node = state.nodes.find((n) => n.id === nodeId)
+      await audioEngine.setSourceDevice(nodeId, deviceId, node?.params ?? {})
     },
-    [audioEngine],
+    [audioEngine, state.nodes],
   )
 
   const isUsingOscillator = useCallback(

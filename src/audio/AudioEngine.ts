@@ -1,5 +1,6 @@
 import type { Connection, Node } from '../types/patch'
 import { createEffect } from './EffectFactory'
+import { createNoiseGate } from './noiseGate'
 
 export interface NodeAudioHandle {
   input: AudioNode
@@ -213,7 +214,11 @@ export class AudioEngine {
     this.handles.get(nodeId)?.updateParam(key, value)
   }
 
-  async setSourceDevice(nodeId: string, deviceId: string): Promise<void> {
+  async setSourceDevice(
+    nodeId: string,
+    deviceId: string,
+    params: Record<string, number>,
+  ): Promise<void> {
     const generation = this.syncGeneration
     const ctx = await this.ensureContext()
     if (!this.isSyncCurrent(generation)) return
@@ -232,10 +237,10 @@ export class AudioEngine {
         return
       }
       this.sourceStreams.set(nodeId, stream)
-      await this.recreateSource(nodeId, ctx, stream, false, generation)
+      await this.recreateSource(nodeId, ctx, stream, false, generation, params)
     } catch {
       if (!this.isSyncCurrent(generation)) return
-      await this.recreateSource(nodeId, ctx, null, true, generation)
+      await this.recreateSource(nodeId, ctx, null, true, generation, params)
     }
     if (this.isSyncCurrent(generation)) {
       this.reconnectNodeWires(nodeId)
@@ -293,17 +298,19 @@ export class AudioEngine {
       usingOscillator = true
     }
 
-    return this.buildSourceHandle(ctx, node, stream, usingOscillator)
+    return this.buildSourceHandle(ctx, node.params, stream, usingOscillator)
   }
 
   private buildSourceHandle(
     ctx: AudioContext,
-    node: Node,
+    params: Record<string, number>,
     stream: MediaStream | null,
     usingOscillator: boolean,
   ): NodeAudioHandle {
     const gain = ctx.createGain()
     const output = ctx.createGain()
+    const mergedParams = { gate: 0, ...params }
+    const gate = createNoiseGate(ctx, mergedParams)
     let sourceNode: AudioNode
     let oscillator: OscillatorNode | null = null
 
@@ -319,13 +326,15 @@ export class AudioEngine {
     }
 
     sourceNode.connect(gain)
-    gain.connect(output)
+    gain.connect(gate.input)
+    gate.output.connect(output)
 
     const updateParam = (key: string, value: number) => {
       if (key === 'gain') gain.gain.value = value
+      else gate.updateParam(key, value)
     }
 
-    for (const [key, value] of Object.entries(node.params)) {
+    for (const [key, value] of Object.entries(mergedParams)) {
       updateParam(key, value)
     }
 
@@ -337,6 +346,7 @@ export class AudioEngine {
       dispose: () => {
         sourceNode.disconnect()
         gain.disconnect()
+        gate.dispose()
         output.disconnect()
         oscillator?.stop()
       },
@@ -349,45 +359,20 @@ export class AudioEngine {
     stream: MediaStream | null,
     usingOscillator: boolean,
     generation: number,
+    params: Record<string, number>,
   ): Promise<void> {
     if (!this.isSyncCurrent(generation)) return
 
     const old = this.handles.get(nodeId)
     old?.dispose()
-    const gain = ctx.createGain()
-    const output = ctx.createGain()
-    let sourceNode: AudioNode
-    let oscillator: OscillatorNode | null = null
 
-    if (stream && !usingOscillator) {
-      sourceNode = ctx.createMediaStreamSource(stream)
-    } else {
-      oscillator = ctx.createOscillator()
-      oscillator.type = 'sine'
-      oscillator.frequency.value = 220
-      oscillator.start()
-      sourceNode = oscillator
-      usingOscillator = true
+    const handle = this.buildSourceHandle(ctx, params, stream, usingOscillator)
+    if (!this.isSyncCurrent(generation)) {
+      handle.dispose()
+      return
     }
 
-    sourceNode.connect(gain)
-    gain.connect(output)
-    gain.gain.value = 0.8
-
-    this.handles.set(nodeId, {
-      input: output,
-      output,
-      updateParam: (key, value) => {
-        if (key === 'gain') gain.gain.value = value
-      },
-      usingOscillator,
-      dispose: () => {
-        sourceNode.disconnect()
-        gain.disconnect()
-        output.disconnect()
-        oscillator?.stop()
-      },
-    })
+    this.handles.set(nodeId, handle)
   }
 
   private createDestinationHandle(ctx: AudioContext, node: Node): NodeAudioHandle {
