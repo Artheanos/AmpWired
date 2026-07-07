@@ -15,6 +15,8 @@ export class AudioEngine {
   private handles = new Map<string, NodeAudioHandle>()
   private wireConnections = new Map<string, { source: AudioNode; target: AudioNode }>()
   private sourceStreams = new Map<string, MediaStream>()
+  private destinationOutputs = new Map<string, HTMLAudioElement>()
+  private destinationSinkIds = new Map<string, string>()
   private lastConnections: Connection[] = []
   private muted = false
   private syncGeneration = 0
@@ -44,6 +46,11 @@ export class AudioEngine {
       stream.getTracks().forEach((t) => t.stop())
     }
     this.sourceStreams.clear()
+    for (const el of this.destinationOutputs.values()) {
+      el.pause()
+      el.srcObject = null
+    }
+    this.destinationOutputs.clear()
     for (const handle of this.handles.values()) {
       handle.dispose()
     }
@@ -247,6 +254,17 @@ export class AudioEngine {
     }
   }
 
+  async setDestinationDevice(nodeId: string, deviceId: string): Promise<void> {
+    this.destinationSinkIds.set(nodeId, deviceId)
+    const el = this.destinationOutputs.get(nodeId)
+    if (!el || !('setSinkId' in el)) return
+    try {
+      await el.setSinkId(deviceId)
+    } catch {
+      // keep default output on failure
+    }
+  }
+
   private async createNodeHandle(
     ctx: AudioContext,
     node: Node,
@@ -385,13 +403,25 @@ export class AudioEngine {
     monoGainL.gain.value = 0.5
     monoGainR.gain.value = 0.5
 
+    const mediaStreamDest = ctx.createMediaStreamDestination()
+    const audioEl = new Audio()
+    audioEl.srcObject = mediaStreamDest.stream
+    audioEl.autoplay = true
+    void audioEl.play().catch(() => {})
+    this.destinationOutputs.set(node.id, audioEl)
+
+    const sinkId = this.destinationSinkIds.get(node.id)
+    if (sinkId !== undefined && 'setSinkId' in audioEl) {
+      void audioEl.setSinkId(sinkId).catch(() => {})
+    }
+
     input.connect(volume)
 
     let connectedToDest = false
 
     const connectStereo = () => {
       if (connectedToDest) volume.disconnect()
-      volume.connect(ctx.destination)
+      volume.connect(mediaStreamDest)
       connectedToDest = true
     }
 
@@ -402,7 +432,7 @@ export class AudioEngine {
       splitter.connect(monoGainR, 0)
       monoGainL.connect(merger, 0, 0)
       monoGainR.connect(merger, 0, 1)
-      merger.connect(ctx.destination)
+      merger.connect(mediaStreamDest)
       connectedToDest = true
     }
 
@@ -442,6 +472,13 @@ export class AudioEngine {
         monoGainL.disconnect()
         monoGainR.disconnect()
         merger.disconnect()
+        mediaStreamDest.disconnect()
+        const el = this.destinationOutputs.get(node.id)
+        if (el) {
+          el.pause()
+          el.srcObject = null
+          this.destinationOutputs.delete(node.id)
+        }
       },
     }
   }

@@ -37,11 +37,18 @@ export function NodeComponent({
   hoveredInputId,
   wireDragValid,
 }: NodeProps) {
-  const { removeNode, moveNode, updateParam, updateLabel, setSourceDevice, isUsingOscillator } =
-    usePatch()
+  const {
+    removeNode,
+    moveNode,
+    updateParam,
+    updateLabel,
+    setSourceDevice,
+    setDestinationDevice,
+    isUsingOscillator,
+  } = usePatch()
   const dragging = useRef(false)
   const dragOffset = useRef({ x: 0, y: 0 })
-  const [showDeviceModal, setShowDeviceModal] = useState(false)
+  const [deviceModalKind, setDeviceModalKind] = useState<'input' | 'output' | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [oscillatorWarning, setOscillatorWarning] = useState(false)
 
@@ -87,22 +94,27 @@ export function NodeComponent({
     dragging.current = false
   }
 
-  const openDeviceModal = useCallback(async () => {
+  const openDeviceModal = useCallback(async (kind: 'input' | 'output') => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true })
       const all = await navigator.mediaDevices.enumerateDevices()
-      setDevices(all.filter((d) => d.kind === 'audioinput'))
-      setShowDeviceModal(true)
+      const filterKind = kind === 'input' ? 'audioinput' : 'audiooutput'
+      setDevices(all.filter((d) => d.kind === filterKind))
+      setDeviceModalKind(kind)
     } catch {
       setDevices([])
-      setShowDeviceModal(true)
+      setDeviceModalKind(kind)
     }
   }, [])
 
   const handleDeviceSelect = async (deviceId: string) => {
-    await setSourceDevice(node.id, deviceId)
-    setShowDeviceModal(false)
-    setOscillatorWarning(isUsingOscillator(node.id))
+    if (deviceModalKind === 'input') {
+      await setSourceDevice(node.id, deviceId)
+      setOscillatorWarning(isUsingOscillator(node.id))
+    } else if (deviceModalKind === 'output') {
+      await setDestinationDevice(node.id, deviceId)
+    }
+    setDeviceModalKind(null)
   }
 
   const hasInput = node.type === 'effect' || node.type === 'destination'
@@ -163,13 +175,26 @@ export function NodeComponent({
           >
             {node.type === 'source' && (
               <>
-                <button type="button" className={styles.deviceBtn} onClick={openDeviceModal}>
+                <button
+                  type="button"
+                  className={styles.deviceBtn}
+                  onClick={() => openDeviceModal('input')}
+                >
                   Select Input Device
                 </button>
                 {oscillatorWarning && (
                   <span className={styles.warning}>Mic unavailable — using test tone</span>
                 )}
               </>
+            )}
+            {node.type === 'destination' && (
+              <button
+                type="button"
+                className={styles.deviceBtn}
+                onClick={() => openDeviceModal('output')}
+              >
+                Select Output Device
+              </button>
             )}
             {paramDefs.map((def) => (
               <Knob
@@ -210,12 +235,30 @@ export function NodeComponent({
         )}
       </div>
 
-      {showDeviceModal && (
-        <Modal title="Select Input Device" onClose={() => setShowDeviceModal(false)}>
+      {deviceModalKind && (
+        <Modal
+          title={deviceModalKind === 'input' ? 'Select Input Device' : 'Select Output Device'}
+          onClose={() => setDeviceModalKind(null)}
+        >
           {devices.length === 0 ? (
-            <p>No audio input devices found.</p>
+            <p>
+              {deviceModalKind === 'input'
+                ? 'No audio input devices found.'
+                : 'No audio output devices found. Output selection needs a browser with setSinkId support (e.g. Chrome).'}
+            </p>
           ) : (
             <ul className={modalStyles.list}>
+              {deviceModalKind === 'output' && (
+                <li>
+                  <button
+                    type="button"
+                    className={modalStyles.listItem}
+                    onClick={() => handleDeviceSelect('')}
+                  >
+                    System Default
+                  </button>
+                </li>
+              )}
               {devices.map((d) => (
                 <li key={d.deviceId}>
                   <button

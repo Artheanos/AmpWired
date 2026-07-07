@@ -221,6 +221,7 @@ interface PatchContextValue {
   toggleMute: () => void
   clearToast: () => void
   setSourceDevice: (nodeId: string, deviceId: string) => Promise<void>
+  setDestinationDevice: (nodeId: string, deviceId: string) => Promise<void>
   isUsingOscillator: (nodeId: string) => boolean
   nodeWidth: number
   nodeHeight: number
@@ -354,6 +355,14 @@ export function PatchProvider({ children }: { children: ReactNode }) {
     [audioEngine, state.nodes],
   )
 
+  const setDestinationDevice = useCallback(
+    async (nodeId: string, deviceId: string) => {
+      await audioEngine.ensureContext()
+      await audioEngine.setDestinationDevice(nodeId, deviceId)
+    },
+    [audioEngine],
+  )
+
   const isUsingOscillator = useCallback(
     (nodeId: string) => audioEngine.isUsingOscillator(nodeId),
     [audioEngine],
@@ -377,6 +386,7 @@ export function PatchProvider({ children }: { children: ReactNode }) {
     toggleMute,
     clearToast,
     setSourceDevice,
+    setDestinationDevice,
     isUsingOscillator,
     nodeWidth: NODE_WIDTH,
     nodeHeight: NODE_HEIGHT,
